@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "remdal-chat-expo",
+    "name": "Remdal Chat",
     "slug": "remdal-chat-expo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "remdal-chat",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -22,12 +22,12 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.ico"
     },
     "plugins": [
       "expo-router",
       [
-        "expo-splash-screen",
+        "expo-splash-screen",   
         {
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
