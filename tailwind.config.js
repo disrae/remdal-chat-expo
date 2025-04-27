@@ -5,9 +5,12 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: "#00529e",
+        primary: "#0052a3",
         secondary: "#009ddc",
         tertiary: "#fdc400",
+        base: "#ddd",
+        dark: "#333",
+        light: "#eee"
       },
     },
   },
@@ -15,7 +18,10 @@ module.exports = {
 };
 
 export const colors = {
-  primary: "#00529e",
+  primary: "#0052a3",
   secondary: "#009ddc",
   tertiary: "#fdc400",
+  base: "#ddd",
+  dark: "#333",
+  light: "#eee"
 };
