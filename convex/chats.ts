@@ -28,6 +28,7 @@ export const create = mutation({
             description: args.description || "This is the first chat ever.",
             createdBy: userId,
             createdAt: Date.now(),
+            updatedAt: Date.now(),
             category: args.category || "company-wide",
             // department: args.department || "",
             // image: args.image,
@@ -61,23 +62,24 @@ export const list = query({
         const limit = args.limit ?? 10;
 
         // Build the basic query
-        let chatsQuery = ctx.db.query("chats");
+        let chatsQuery = ctx.db.query("chats")
+            .withIndex("by_updated");
 
         // Apply cursor-based pagination if cursor is provided
         if (args.cursor) {
-            const [createdAt, chatId] = args.cursor.split(':');
+            const [updatedAt, chatId] = args.cursor.split(':');
             chatsQuery = chatsQuery.filter(q =>
                 q.or(
-                    q.lt(q.field("createdAt"), parseInt(createdAt)),
+                    q.lt(q.field("updatedAt"), parseInt(updatedAt)),
                     q.and(
-                        q.eq(q.field("createdAt"), parseInt(createdAt)),
+                        q.eq(q.field("updatedAt"), parseInt(updatedAt)),
                         q.lt(q.field("_id"), chatId)
                     )
                 )
             );
         }
 
-        // Order by createdAt (newest first) and limit results
+        // Order by updatedAt (newest first) and limit results
         const chats = await chatsQuery
             .order("desc")
             .take(limit);
@@ -86,7 +88,7 @@ export const list = query({
         let nextCursor = null;
         if (chats.length === limit) {
             const lastChat = chats[chats.length - 1];
-            nextCursor = `${lastChat.createdAt}:${lastChat._id}`;
+            nextCursor = `${lastChat.updatedAt}:${lastChat._id}`;
         }
 
         // Filter out null chats and add hasUnread field
@@ -217,6 +219,11 @@ export const sendMessage = mutation({
             content: args.content,
             timestamp: Date.now(),
             parentMessageId: args.parentMessageId,
+        });
+
+        // Update the chat's updatedAt timestamp
+        await ctx.db.patch(args.chatId, {
+            updatedAt: Date.now(),
         });
 
         return messageId;

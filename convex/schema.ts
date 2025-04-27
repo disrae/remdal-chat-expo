@@ -30,6 +30,7 @@ const schema = defineSchema({
         description: v.optional(v.string()),
         createdBy: v.id("users"),
         createdAt: v.number(),
+        updatedAt: v.number(),
         image: v.optional(v.string()),
 
         // TODO: Do we need this?
@@ -41,7 +42,7 @@ const schema = defineSchema({
             v.literal("private")
         ),
         department: v.optional(v.string()),
-    }).index("createdBy", ["createdBy"]),
+    }).index("createdBy", ["createdBy"]).index("by_updated", ["updatedAt"]),
 
     // Chat members table to track who has access to which chats
     chatMembers: defineTable({
