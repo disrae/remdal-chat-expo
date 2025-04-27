@@ -1,6 +1,9 @@
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button, TextInput, View, Text, Pressable, Image } from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
+import { Ionicons } from '@expo/vector-icons';
+import '../global.css';
 
 export default function Index() {
   const { signIn } = useAuthActions();
@@ -8,10 +11,26 @@ export default function Index() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <View className="flex-1 justify-center items-center bg-gray-50 px-6">
-      <View className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-6">
+      <Animated.View
+        entering={FadeIn.duration(500)}
+        // className="w-full bg-white rounded-2xl shadow-lg p-6"
+        style={{
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 3,
+          borderRadius: 24,
+          backgroundColor: 'white',
+          padding: 24,
+          width: '100%',
+          maxWidth: 400,
+        }}
+      >
         <View className="items-center mb-6">
           <Image
             source={require("../assets/images/icon.png")}
@@ -46,18 +65,32 @@ export default function Index() {
               value={email}
               inputMode="email"
               autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
             />
           </View>
 
           <View>
             <Text className="text-sm font-medium text-gray-700 mb-1">Password</Text>
-            <TextInput
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-secondary"
-              placeholder="Enter your password"
-              onChangeText={setPassword}
-              value={password}
-              secureTextEntry
-            />
+            <View className="relative">
+              <TextInput
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-secondary"
+                placeholder="Enter your password"
+                onChangeText={setPassword}
+                value={password}
+                secureTextEntry={!showPassword}
+              />
+              <Pressable
+                onPress={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-0 bottom-0 justify-center"
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={24}
+                  color={showPassword ? "gray" : "black"}
+                />
+              </Pressable>
+            </View>
           </View>
 
         </View>
@@ -93,7 +126,7 @@ export default function Index() {
           </Pressable>
         </View>
 
-      </View>
+      </Animated.View>
     </View>
   );
 }
