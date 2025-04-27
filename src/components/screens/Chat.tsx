@@ -1,6 +1,6 @@
-import { View, Text, TextInput, Pressable, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Pressable, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Modal } from 'react-native';
 import React, { useState, useRef, useEffect } from 'react';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, haptic } from '@/style';
@@ -21,11 +21,13 @@ type MessageWithSender = Doc<"messages"> & {
 
 export function ChatScreen() {
     const { chatId } = useLocalSearchParams<{ chatId: string; }>();
+    const router = useRouter();
     const [message, setMessage] = useState('');
     const flatListRef = useRef<FlatList>(null);
+    const [deleteModalVisible, setDeleteModalVisible] = useState(false);
 
     if (!chatId) {
-        router.back();
+        router.replace('/');
         return null;
     }
 
@@ -41,6 +43,7 @@ export function ChatScreen() {
         const sendMessage = useMutation(api.chats.sendMessage);
         const markMessageRead = useMutation(api.chats.markMessageRead);
         const markChatRead = useMutation(api.chats.markChatRead);
+        const deleteChat = useMutation(api.chats.deleteChat);
 
         const handleSend = async () => {
             if (!message.trim()) return;
@@ -55,6 +58,32 @@ export function ChatScreen() {
             } catch (error) {
                 console.error('Failed to send message:', error);
             }
+        };
+
+        // Handle chat deletion with confirmation
+        const handleDelete = () => {
+            haptic('Light');
+            setDeleteModalVisible(true);
+        };
+
+        const confirmDelete = async () => {
+            try {
+                haptic('Medium');
+                await deleteChat({ chatId: chatIdObj });
+                // Navigate back after successful deletion
+                router.back();
+            } catch (error) {
+                console.error('Failed to delete chat:', error);
+                // Show error message
+                Alert.alert(
+                    "Error",
+                    error instanceof Error ? error.message : "Failed to delete chat. Try again later."
+                );
+            }
+        };
+
+        const cancelDelete = () => {
+            setDeleteModalVisible(false);
         };
 
         // Mark all messages as read when chat is opened
@@ -81,13 +110,7 @@ export function ChatScreen() {
             return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         };
 
-        if (!chat || !currentUser) {
-            return (
-                <View className="flex-1 justify-center items-center bg-slate-200">
-                    <ActivityIndicator size="large" color={colors.primary} />
-                </View>
-            );
-        }
+
 
         const MessageItem = ({ item }: { item: MessageWithSender; }) => {
             const isOwnMessage = currentUser && item.senderId === currentUser._id;
@@ -177,6 +200,16 @@ export function ChatScreen() {
             );
         };
 
+        if (chat === null) {
+            router.replace('/');
+        }
+        if (!chat || !currentUser) {
+            return (
+                <View className="flex-1 justify-center items-center bg-slate-200">
+                    <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+            );
+        }
         return (
             <View className="flex-1 bg-slate-100">
                 <SafeAreaView className="flex-1 bg-white" edges={['top']}>
@@ -188,12 +221,19 @@ export function ChatScreen() {
                         >
                             <Ionicons name="arrow-back" size={24} color={colors.dark} />
                         </Pressable>
-                        <View>
+                        <View className="flex-1">
                             <Text className="font-semibold text-lg">{chat.name}</Text>
                             {chat.description && (
                                 <Text className="text-gray-500 text-sm">{chat.description}</Text>
                             )}
                         </View>
+                        <Pressable
+                            className="p-2"
+                            onPress={handleDelete}
+                            hitSlop={8}
+                        >
+                            <Ionicons name="trash-outline" size={22} color={colors.dark} />
+                        </Pressable>
                     </View>
 
                     {/* Main content with keyboard avoiding */}
@@ -236,6 +276,40 @@ export function ChatScreen() {
                         </SafeAreaView>
                     </KeyboardAvoidingView>
                 </SafeAreaView>
+
+                {/* Delete Chat Modal */}
+                <Modal
+                    animationType="fade"
+                    transparent={true}
+                    visible={deleteModalVisible}
+                    onRequestClose={cancelDelete}
+                >
+                    <View className="flex-1 justify-center items-center bg-black/50">
+                        <View className="bg-white w-[85%] max-w-md rounded-lg p-6 shadow-xl">
+                            <Text className="text-xl font-semibold text-center mb-4">Delete Chat</Text>
+
+                            <Text className="mb-4">
+                                Are you sure you want to delete this chat? This action cannot be undone.
+                            </Text>
+
+                            <View className="flex-row justify-end mt-2 space-x-3">
+                                <Pressable
+                                    onPress={cancelDelete}
+                                    className="px-4 py-2 rounded-md"
+                                >
+                                    <Text className="text-gray-600 font-medium">Cancel</Text>
+                                </Pressable>
+
+                                <Pressable
+                                    onPress={confirmDelete}
+                                    className="bg-primary px-4 py-2 rounded-md"
+                                >
+                                    <Text className="text-white font-medium">Delete</Text>
+                                </Pressable>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
             </View>
         );
     } catch (error) {
