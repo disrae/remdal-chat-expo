@@ -4,6 +4,7 @@ import { Button, TextInput, View, Text, Pressable, Image } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { haptic } from "@/style";
 
 export function LoginScreen() {
     const { signIn } = useAuthActions();
@@ -104,7 +105,7 @@ export function LoginScreen() {
                     </Text>
                     <Pressable
                         onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            haptic("Light");
                             setStep(step === "signIn" ? "signUp" : "signIn");
                         }}
                     >
