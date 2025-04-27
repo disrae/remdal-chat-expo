@@ -125,7 +125,7 @@ export function MessagesScreen() {
                 {/* Inner container with max width */}
                 <View className="flex-1 w-full max-w-3xl">
                     {/* White header with notch area */}
-                    <SafeAreaView className="bg-white pb-2 shadow rounded- z-10 lg:rounded-b-md" edges={['top']}>
+                    <SafeAreaView className="bg-white pb-2 border-b-2 border-gray-200 rounded- z-10 lg:rounded-b-md" edges={['top']}>
                         <View className="w-full flex-row items-center justify-between px-4 lg:py-4">
                             <Text className="text-2xl text-dark font-semibold">Chats</Text>
                             <Pressable
@@ -162,7 +162,7 @@ export function MessagesScreen() {
                                 const unread = item.hasUnread;
                                 return (
                                     <Pressable
-                                        className={`p-4 mb-1 ${unread ? 'bg-white' : 'bg-gray-50'}`}
+                                        className={`p-2.5 ${unread ? 'bg-white border-b border-gray-200' : 'bg-gray-50 border-b border-gray-200'}`}
                                         onPress={() => handleChatPress(item._id)}
                                     >
                                         <View className="flex-row items-center justify-between">

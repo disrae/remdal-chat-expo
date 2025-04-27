@@ -25,7 +25,7 @@ export const create = mutation({
         // Create the chat
         const chatId = await ctx.db.insert("chats", {
             name: args.name,
-            description: args.description || "This is the first chat ever.",
+            description: args.description || "",
             createdBy: userId,
             createdAt: Date.now(),
             updatedAt: Date.now(),
