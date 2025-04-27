@@ -1,9 +1,99 @@
-import { Text, View } from "react-native";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useState } from "react";
+import { Button, TextInput, View, Text, Pressable, Image } from "react-native";
 
 export default function Index() {
+  const { signIn } = useAuthActions();
+  const [step, setStep] = useState<"signUp" | "signIn">("signIn");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+
   return (
-    <View className="flex-1 justify-center items-center bg-white">
-      <Text>Index</Text>
+    <View className="flex-1 justify-center items-center bg-gray-50 px-6">
+      <View className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-6">
+        <View className="items-center mb-6">
+          <Image
+            source={require("../assets/images/icon.png")}
+            className="w-20 h-20 mb-2"
+            resizeMode="contain"
+          />
+          <Text className="text-gray-600 text-sm font-medium">
+            {step === "signIn" ? "Welcome back to your workspace" : "Join your team on Remdal Chat"}
+          </Text>
+        </View>
+
+        <View className="gap-2">
+          {step === "signUp" && (
+            <View>
+              <Text className="text-sm font-medium text-gray-700 mb-1">Name</Text>
+              <TextInput
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-secondary"
+                placeholder="Enter your name"
+                onChangeText={setName}
+                value={name}
+                autoCapitalize="words"
+              />
+            </View>
+          )}
+
+          <View>
+            <Text className="text-sm font-medium text-gray-700 mb-1">Email</Text>
+            <TextInput
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-secondary"
+              placeholder="Enter your email"
+              onChangeText={setEmail}
+              value={email}
+              inputMode="email"
+              autoCapitalize="none"
+            />
+          </View>
+
+          <View>
+            <Text className="text-sm font-medium text-gray-700 mb-1">Password</Text>
+            <TextInput
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-secondary"
+              placeholder="Enter your password"
+              onChangeText={setPassword}
+              value={password}
+              secureTextEntry
+            />
+          </View>
+
+        </View>
+
+        <View className="h-6" />
+
+        <Pressable
+          className="w-full bg-primary py-3 rounded-lg active:opacity-90 mb-4"
+          onPress={() => {
+            void signIn("password", {
+              email,
+              password,
+              flow: step,
+              ...(step === "signUp" ? { name } : {})
+            });
+          }}
+        >
+          <Text className="text-white font-semibold text-center">
+            {step === "signIn" ? "Sign In" : "Sign Up"}
+          </Text>
+        </Pressable>
+
+        <View className="flex-row justify-center items-center">
+          <Text className="text-gray-600">
+            {step === "signIn" ? "Don't have an account? " : "Already have an account? "}
+          </Text>
+          <Pressable
+            onPress={() => setStep(step === "signIn" ? "signUp" : "signIn")}
+          >
+            <Text className="text-secondary font-medium">
+              {step === "signIn" ? "Sign Up" : "Sign In"}
+            </Text>
+          </Pressable>
+        </View>
+
+      </View>
     </View>
   );
 }
