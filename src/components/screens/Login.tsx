@@ -1,14 +1,11 @@
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button, TextInput, View, Text, Pressable, Image } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useAuthToken } from "@convex-dev/auth/react";
-import { Redirect } from 'expo-router';
 
 export function LoginScreen() {
-    const token = useAuthToken();
     const { signIn } = useAuthActions();
     const [step, setStep] = useState<"signUp" | "signIn">("signIn");
     const [email, setEmail] = useState("");
@@ -16,28 +13,9 @@ export function LoginScreen() {
     const [name, setName] = useState("");
     const [showPassword, setShowPassword] = useState(false);
 
-    if (token) {
-        return <Redirect href="/(authenticated)" />;
-    }
-
     return (
         <View className="flex-1 justify-center items-center bg-gray-50 px-6">
-            <Animated.View
-                entering={FadeIn.duration(500)}
-                // className="w-full bg-white rounded-2xl shadow-lg p-6"
-                style={{
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 8,
-                    elevation: 3,
-                    borderRadius: 24,
-                    backgroundColor: 'white',
-                    padding: 24,
-                    width: '100%',
-                    maxWidth: 400,
-                }}
-            >
+            <View className="w-full bg-white rounded-2xl shadow-lg p-6 max-w-md">
                 <View className="items-center mb-6">
                     <Image
                         source={require("../../assets/images/icon.png")}
@@ -136,7 +114,7 @@ export function LoginScreen() {
                     </Pressable>
                 </View>
 
-            </Animated.View>
+            </View>
         </View>
     );
 }

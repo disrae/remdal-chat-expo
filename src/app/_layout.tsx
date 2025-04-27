@@ -25,9 +25,11 @@ export default function RootLayout() {
       client={convex}
       storage={secureStorage}
     >
-      <Stack>
+      <Stack screenOptions={{
+        headerShown: false,
+      }}>
         <Stack.Screen
-          name="index"
+          name="login"
           options={{
             headerShown: false,
           }}
