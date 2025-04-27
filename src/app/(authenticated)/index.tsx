@@ -16,10 +16,10 @@ export default function Home() {
     return (
         <View className="flex-1 bg-primary">
 
-            <View className="flex-1">
+            <View className="flex-1 border">
 
                 {/* White header with notch area */}
-                <SafeAreaView className="bg-primary pb-2 shadow-md rounded- z-10" edges={['top']}>
+                <SafeAreaView className="bg-primary pb-2 shadow-md rounded- z-10 " edges={['top']}>
                     <View className="w-full items-center justify-center">
                         <Text className="text-lg text-light font-semibold">Messages</Text>
                     </View>
