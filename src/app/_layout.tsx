@@ -3,6 +3,7 @@ import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
 import { Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
+import "../global.css";
 
 const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
   unsavedChangesWarning: false,
