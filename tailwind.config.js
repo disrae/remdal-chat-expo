@@ -13,3 +13,9 @@ module.exports = {
   },
   plugins: [],
 };
+
+export const colors = {
+  primary: "#00529e",
+  secondary: "#009ddc",
+  tertiary: "#fdc400",
+};
