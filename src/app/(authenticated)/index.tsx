@@ -1,5 +1,5 @@
-import { View, Text, Pressable, Modal, TextInput } from 'react-native';
-import React, { useState } from 'react';
+import { View, Text, Pressable, Modal, TextInput, FlatList, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback } from 'react';
 import { useAuthActions } from '@convex-dev/auth/dist/react';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -8,17 +8,53 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, haptic } from '@/style';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
-import { Doc } from '../../../convex/_generated/dataModel';
+import { Doc, Id } from '../../../convex/_generated/dataModel';
+
+// Interface for the chat with the hasUnread field
+interface ChatWithReadStatus extends Doc<"chats"> {
+    hasUnread?: boolean;
+}
+
+// Define the response type from the paginated list query
+interface ChatsResponse {
+    chats: ChatWithReadStatus[];
+    nextCursor: string | null;
+}
 
 export default function Home() {
     const { signOut } = useAuthActions();
     const [modalVisible, setModalVisible] = useState(false);
     const [chatName, setChatName] = useState('');
     const [description, setDescription] = useState('');
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [cursor, setCursor] = useState<string | undefined>(undefined);
+    const [allChats, setAllChats] = useState<ChatWithReadStatus[]>([]);
+    const CHATS_PER_PAGE = 10;
 
     // Convex mutations and queries
     const createChat = useMutation(api.chats.create);
-    const chats = useQuery(api.chats.list) || [];
+    const chatsResponse = useQuery(api.chats.list, {
+        limit: CHATS_PER_PAGE,
+        cursor
+    });
+
+    // Use a default empty response if the query hasn't loaded yet
+    const chatsData: ChatsResponse = chatsResponse ? (chatsResponse as ChatsResponse) : { chats: [], nextCursor: null };
+    const markChatRead = useMutation(api.chats.markChatRead);
+
+    // Update allChats when new data arrives
+    React.useEffect(() => {
+        if (chatsData && chatsData.chats) {
+            if (cursor) {
+                // Append new chats to existing ones
+                setAllChats(prev => [...prev, ...chatsData.chats]);
+            } else {
+                // Initial load or refresh
+                setAllChats(chatsData.chats);
+            }
+            setIsLoadingMore(false);
+        }
+    }, [chatsData, cursor]);
 
     const handleSignOut = async () => {
         haptic('Light');
@@ -32,6 +68,11 @@ export default function Home() {
 
     const handleChatPress = (chatId: string) => {
         haptic('Light');
+
+        // Mark chat as read when opening it
+        markChatRead({ chatId: chatId as any })
+            .catch(error => console.error('Failed to mark chat as read:', error));
+
         router.push(`/${chatId}`);
     };
 
@@ -62,16 +103,31 @@ export default function Home() {
         setDescription('');
     };
 
+    // Handle load more chats
+    const handleLoadMore = useCallback(() => {
+        if (isLoadingMore || !chatsData.nextCursor) return;
+
+        setIsLoadingMore(true);
+        setCursor(chatsData.nextCursor);
+    }, [isLoadingMore, chatsData.nextCursor]);
+
+    // Empty list component
+    const renderEmptyList = () => (
+        <View className="flex-1 justify-center items-center py-8">
+            <Text className="text-center text-gray-500">No chats yet. Create one!</Text>
+        </View>
+    );
+
     return (
-        <View className="flex-1 bg-slate-400">
+        <View className="flex-1 bg-slate-300">
             {/* Outer container that centers content */}
             <View className="flex-1 items-center">
                 {/* Inner container with max width */}
                 <View className="flex-1 w-full max-w-3xl">
                     {/* White header with notch area */}
-                    <SafeAreaView className="bg-white pb-2 shadow-md rounded- z-10 lg:rounded-b-md" edges={['top']}>
+                    <SafeAreaView className="bg-white pb-2 shadow rounded- z-10 lg:rounded-b-md" edges={['top']}>
                         <View className="w-full flex-row items-center justify-between px-4 lg:py-4">
-                            <Text className="text-lg text-dark font-semibold">Messages</Text>
+                            <Text className="text-2xl text-dark font-semibold">Chats</Text>
                             <Pressable
                                 onPress={handleSignOut}
                                 className="p-2"
@@ -82,26 +138,52 @@ export default function Home() {
                     </SafeAreaView>
 
                     {/* Main content area */}
-                    <View className="flex-1 bg-slate-200 border-black/50 border lg:-mt-1">
-                        <View className="p-4">
-                            {/* List chats */}
-                            {chats.length === 0 ? (
-                                <Text className="text-center text-gray-500 my-4">No chats yet. Create one!</Text>
-                            ) : (
-                                chats.map((chat: Doc<"chats">) => (
+                    <View className="flex-1 bg-slate-100 shadow lg:-mt-1">
+                        {/* FlatList for chats */}
+                        <FlatList
+                            data={allChats}
+                            keyExtractor={(item) => item._id.toString()}
+                            contentContainerStyle={{ flexGrow: 1 }}
+                            ListEmptyComponent={renderEmptyList}
+                            onEndReached={handleLoadMore}
+                            onEndReachedThreshold={0.5}
+                            initialNumToRender={10}
+                            maxToRenderPerBatch={5}
+                            windowSize={5}
+                            removeClippedSubviews={true}
+                            ListFooterComponent={
+                                isLoadingMore ? (
+                                    <View className="py-4">
+                                        <ActivityIndicator size="small" color={colors.primary} />
+                                    </View>
+                                ) : null
+                            }
+                            renderItem={({ item }) => {
+                                const unread = item.hasUnread;
+                                return (
                                     <Pressable
-                                        key={chat._id}
-                                        className="bg-white rounded-lg p-4 mb-2 shadow-sm"
-                                        onPress={() => handleChatPress(chat._id)}
+                                        className={`p-4 mb-1 ${unread ? 'bg-white' : 'bg-gray-50'}`}
+                                        onPress={() => handleChatPress(item._id)}
                                     >
-                                        <Text className="font-medium text-lg">{chat.name}</Text>
-                                        {chat.description && (
-                                            <Text className="text-gray-600 mt-1">{chat.description}</Text>
-                                        )}
+                                        <View className="flex-row items-center justify-between">
+                                            <View>
+                                                <Text className={`font-medium text-lg ${unread ? 'font-bold text-black' : 'text-gray-800'}`}>
+                                                    {item.name}
+                                                </Text>
+                                                {item.description && (
+                                                    <Text className={`mt-1 ${unread ? 'text-gray-700' : 'text-gray-600'}`}>
+                                                        {item.description}
+                                                    </Text>
+                                                )}
+                                            </View>
+                                            {unread && (
+                                                <View className="w-3 h-3 bg-blue-500 rounded-full" />
+                                            )}
+                                        </View>
                                     </Pressable>
-                                ))
-                            )}
-                        </View>
+                                );
+                            }}
+                        />
 
                         {/* Plus Button (FAB) */}
                         <Pressable

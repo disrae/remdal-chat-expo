@@ -47,22 +47,88 @@ export const create = mutation({
 });
 
 export const list = query({
-    args: {},
-    handler: async (ctx) => {
+    args: {
+        limit: v.optional(v.number()),
+        cursor: v.optional(v.string())
+    },
+    handler: async (ctx, args) => {
         const userId = await getAuthUserId(ctx);
         if (!userId) {
             return [];
         }
 
-        // FOR TESTING: Get all chats instead of just the user's chats
-        const chats = await ctx.db
-            .query("chats")
-            .collect();
+        // Default limit to 10 chats per page
+        const limit = args.limit ?? 10;
 
-        // Sort by most recently created
-        return chats
-            .filter((chat): chat is NonNullable<typeof chat> => chat !== null)
-            .sort((a, b) => b.createdAt - a.createdAt);
+        // Build the basic query
+        let chatsQuery = ctx.db.query("chats");
+
+        // Apply cursor-based pagination if cursor is provided
+        if (args.cursor) {
+            const [createdAt, chatId] = args.cursor.split(':');
+            chatsQuery = chatsQuery.filter(q =>
+                q.or(
+                    q.lt(q.field("createdAt"), parseInt(createdAt)),
+                    q.and(
+                        q.eq(q.field("createdAt"), parseInt(createdAt)),
+                        q.lt(q.field("_id"), chatId)
+                    )
+                )
+            );
+        }
+
+        // Order by createdAt (newest first) and limit results
+        const chats = await chatsQuery
+            .order("desc")
+            .take(limit);
+
+        // Generate the next cursor
+        let nextCursor = null;
+        if (chats.length === limit) {
+            const lastChat = chats[chats.length - 1];
+            nextCursor = `${lastChat.createdAt}:${lastChat._id}`;
+        }
+
+        // Filter out null chats and add hasUnread field
+        const chatsWithUnreadStatus = await Promise.all(
+            chats
+                .filter((chat): chat is NonNullable<typeof chat> => chat !== null)
+                .map(async (chat) => {
+                    // Get the most recent messages for this chat
+                    const recentMessages = await ctx.db
+                        .query("messages")
+                        .withIndex("chatId", (q) => q.eq("chatId", chat._id))
+                        .order("desc")
+                        .take(5);
+
+                    // Check if there are any unread messages
+                    let hasUnread = false;
+
+                    for (const message of recentMessages) {
+                        // Check if this message has been read by the current user
+                        const messageRead = await ctx.db
+                            .query("messageReads")
+                            .withIndex("messageId", (q) =>
+                                q.eq("messageId", message._id))
+                            .filter(q => q.eq(q.field("userId"), userId))
+                            .unique();
+
+                        // If no read record found for this message, mark chat as having unread messages
+                        if (!messageRead) {
+                            hasUnread = true;
+                            break;
+                        }
+                    }
+
+                    return { ...chat, hasUnread };
+                })
+        );
+
+        // Return both the chats and pagination info
+        return {
+            chats: chatsWithUnreadStatus,
+            nextCursor
+        };
     },
 });
 
@@ -154,5 +220,75 @@ export const sendMessage = mutation({
         });
 
         return messageId;
+    },
+});
+
+export const markMessageRead = mutation({
+    args: {
+        messageId: v.id("messages"),
+    },
+    handler: async (ctx, args) => {
+        const userId = await getAuthUserId(ctx);
+        if (!userId) {
+            throw new Error("Unauthorized");
+        }
+
+        // Check if this message is already marked as read
+        const existingRead = await ctx.db
+            .query("messageReads")
+            .withIndex("messageId", (q) =>
+                q.eq("messageId", args.messageId))
+            .filter(q => q.eq(q.field("userId"), userId))
+            .unique();
+
+        // If not already read, mark it as read
+        if (!existingRead) {
+            await ctx.db.insert("messageReads", {
+                messageId: args.messageId,
+                userId,
+                readAt: Date.now(),
+            });
+        }
+
+        return true;
+    },
+});
+
+export const markChatRead = mutation({
+    args: {
+        chatId: v.id("chats"),
+    },
+    handler: async (ctx, args) => {
+        const userId = await getAuthUserId(ctx);
+        if (!userId) {
+            throw new Error("Unauthorized");
+        }
+
+        // Get all unread messages for this chat
+        const messages = await ctx.db
+            .query("messages")
+            .withIndex("chatId", (q) => q.eq("chatId", args.chatId))
+            .collect();
+
+        // Mark each message as read
+        for (const message of messages) {
+            const existingRead = await ctx.db
+                .query("messageReads")
+                .withIndex("messageId", (q) =>
+                    q.eq("messageId", message._id))
+                .filter(q => q.eq(q.field("userId"), userId))
+                .unique();
+
+            // If not already read, mark it as read
+            if (!existingRead) {
+                await ctx.db.insert("messageReads", {
+                    messageId: message._id,
+                    userId,
+                    readAt: Date.now(),
+                });
+            }
+        }
+
+        return true;
     },
 });

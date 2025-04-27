@@ -40,6 +40,8 @@ export default function ChatScreen() {
         const chat = useQuery(api.chats.get, { chatId: chatIdObj });
         const messages = useQuery(api.chats.getMessages, { chatId: chatIdObj }) || [];
         const sendMessage = useMutation(api.chats.sendMessage);
+        const markMessageRead = useMutation(api.chats.markMessageRead);
+        const markChatRead = useMutation(api.chats.markChatRead);
 
         const handleSend = async () => {
             if (!message.trim()) return;
@@ -55,6 +57,15 @@ export default function ChatScreen() {
                 console.error('Failed to send message:', error);
             }
         };
+
+        // Mark all messages as read when chat is opened
+        useEffect(() => {
+            if (chatIdObj && messages.length > 0) {
+                // Mark entire chat as read
+                markChatRead({ chatId: chatIdObj })
+                    .catch(error => console.error('Failed to mark chat as read:', error));
+            }
+        }, [chatIdObj, messages.length]);
 
         // Scroll to bottom when new messages arrive
         useEffect(() => {
@@ -82,6 +93,14 @@ export default function ChatScreen() {
         const MessageItem = ({ item }: { item: MessageWithSender; }) => {
             const isOwnMessage = currentUser && item.senderId === currentUser._id;
 
+            // Mark message as read when it renders (if not your own message)
+            useEffect(() => {
+                if (!isOwnMessage) {
+                    markMessageRead({ messageId: item._id })
+                        .catch(error => console.error('Failed to mark message as read:', error));
+                }
+            }, [item._id, isOwnMessage]);
+
             return (
                 <View className={`my-2 ${isOwnMessage ? 'items-end' : 'items-start'}`}>
                     {/* Sender name (only for messages from others) */}
@@ -94,8 +113,8 @@ export default function ChatScreen() {
                     <View className="flex-row">
                         <View
                             className={`rounded-lg px-3 py-2 max-w-[80%] ${isOwnMessage
-                                    ? 'bg-primary rounded-tr-none'
-                                    : 'bg-gray-200 rounded-tl-none'
+                                ? 'bg-primary rounded-tr-none'
+                                : 'bg-gray-200 rounded-tl-none'
                                 }`}
                         >
                             <Text className={isOwnMessage ? 'text-white' : 'text-black'}>
